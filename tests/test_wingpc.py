@@ -1,8 +1,6 @@
 import pytest
 from secanalysis.sec_formats.win_gpc import WinGPCData
-import os
 import matplotlib.pyplot as plt
-import numpy as np
 
 
 @pytest.fixture
@@ -29,7 +27,7 @@ def _prep_wgpc_lines(
     if not with_time:
         # remove the time column: in raw lines drop everything after the last \t
         for i in range(*RAWLINES):
-            if not "\t" in lines[i]:
+            if "\t" not in lines[i]:
                 continue
             lines[i] = lines[i].split("\t")[:-1]
             lines[i] = "\t".join(lines[i]) + "\n"
@@ -37,7 +35,7 @@ def _prep_wgpc_lines(
     if not with_volume:
         # remove the volume column: in raw lines drop everything before the first \t
         for i in range(*RAWLINES):
-            if not "\t" in lines[i]:
+            if "\t" not in lines[i]:
                 continue
             lines[i] = lines[i].split("\t")[1:]
             lines[i] = "\t".join(lines[i])
@@ -88,9 +86,9 @@ def test_wingpc(
 
     expected_raw_data_cols = [WinGPCData.DEFAULT_VOLUME_COLUMN, "RID"]
     assert len(expected_raw_data_cols) == len(gpc._raw_data.columns)
-    assert all(
-        col in gpc._raw_data.columns for col in expected_raw_data_cols
-    ), f"Expected columns {expected_raw_data_cols} not found in raw data"
+    assert all(col in gpc._raw_data.columns for col in expected_raw_data_cols), (
+        f"Expected columns {expected_raw_data_cols} not found in raw data"
+    )
 
     # if not with_header:
     #     gpc.set_calibration_function(
@@ -128,7 +126,7 @@ def test_wingpc(
     )
 
     # Save the figure
-    test_id = request.node.name  # Gets the pytest-generated test name with param IDs
+    # test_id = request.node.name  # Gets the pytest-generated test name with param IDs
     # os.makedirs("test_outputs", exist_ok=True)
     # fig.savefig(f"test_outputs/{test_id}.png")
     plt.close(fig)  # Optional: close to free memory
