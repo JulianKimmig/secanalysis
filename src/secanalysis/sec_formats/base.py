@@ -121,17 +121,17 @@ class SECDataBase(ABC):
         mass_ax._get_lines = raw_ax._get_lines
         mass_ax.set_ylabel("Mass")
         mass_ax.set_yscale("log")
-        lns = l1
+        handel = l1
         if self.mass_range is not None:
             l2 = mass_ax.plot(
                 self.raw_volumes,
                 self.mass_range,
                 label="mass",
             )
-            lns += l2
+            handel += l2
 
-        labs = [l.get_label() for l in lns]
-        mass_ax.legend(lns, labs)
+        labs = [hand.get_label() for hand in handel]
+        mass_ax.legend(handel, labs)
         raw_ax.grid()
 
         return raw_ax, mass_ax
@@ -151,7 +151,7 @@ class SECDataBase(ABC):
             sig = self.basline_corrected_signal[b1:b2]
             sig = sig - sig.min()
             sig = sig / sig.max()
-            l1 = raw_ax.plot(
+            raw_ax.plot(
                 self.raw_volumes[b1:b2],
                 sig,
             )
@@ -190,7 +190,7 @@ class SECDataBase(ABC):
     ):
         raw_ax = fig.add_subplot(total * 100 + 10 + current)
 
-        l1 = raw_ax.plot(
+        raw_ax.plot(
             self.raw_volumes,
             self.raw_signals,
             label=self.signal_names,
@@ -230,7 +230,7 @@ class SECDataBase(ABC):
 
                 # raise ValueError(f"Mn: {mn}, Mw: {mw}, Mz: {mz}, m1: {m1}, m2: {m2}")
 
-                _plot = raw_ax.plot(
+                raw_ax.plot(
                     mass,
                     wm_log,
                     label=self.signal_names,
@@ -372,7 +372,9 @@ class SECDataBase(ABC):
 
     def calc_mass_params(self, lower_mass_cutoff: float, upper_mass_cutoff: float):
         """
-        Calculates Mn (Number average molecular mass), Mw (Weight average molecular mass) and Mz (Z average molecular mass)
+        Calculates Mn (Number average molecular mass),
+        Mw (Weight average molecular mass)
+        and Mz (Z average molecular mass)
         :param lower_mass_cutoff: Lower mass cutoff
         :param upper_mass_cutoff: Upper mass cutoff
         :return: Mn, Mw, Mz
@@ -390,8 +392,8 @@ class SECDataBase(ABC):
         m2 = np.trapezoid(wlog * M**2, logM, axis=0)  # ∫w·M²     dM
 
         # --- averages ----------------------------------------------------
-        Mn = 1.0 / m_neg1  # Mn = m0 / m(‑1)
-        Mw = m1  # Mw = m1 / m0
+        Mn = m0 / m_neg1  # Mn = m0 / m(‑1)
+        Mw = m1 / m0  # Mw = m1 / m0
         Mz = m2 / m1  # Mz = m2 / m1
         Mp = M[np.argmax(wlog)]  # peak molar mass (mode)
 
@@ -436,7 +438,7 @@ class SECDataBase(ABC):
         elif np.all(np.diff(masses) > 0):
             pass
         else:
-            raise ValueError(f"Mass range is not monotonic. Check the data.")
+            raise ValueError("Mass range is not monotonic. Check the data.")
         r = self._calibration_function(rw)  # ml^x
         if self._calibration_function(0) > self._calibration_function(1):
             sigma = -np.gradient(r, rw)
@@ -611,12 +613,16 @@ class SECDataBase(ABC):
             merged_edges.append([left, right, peak])
 
         merged_edges = [
-            [np.argmin(smoothed[l:p]) + l, np.argmin(smoothed[p:r]) + p, p]
-            for l, r, p in merged_edges
+            [
+                np.argmin(smoothed[left:peak]) + left,
+                np.argmin(smoothed[peak:right]) + peak,
+                peak,
+            ]
+            for left, right, peak in merged_edges
         ]
 
         # raise ValueError(merged_edges)
-        for l, r, p in merged_edges:
+        for left, right, peak in merged_edges:
             self.add_signal_boarder(
-                index=(l, r, p),
+                index=(left, right, peak),
             )

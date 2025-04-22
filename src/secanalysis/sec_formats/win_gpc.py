@@ -238,11 +238,6 @@ class WinGPCData(SECDataBase):
             elu_volume = self.elu_data["Volume (mL)"]
             elu_signal = self.elu_data["RID"]
             elu_molar_mass = self.elu_data["Molar mass"]
-            min_volume = elu_volume.min()
-            max_volume = elu_volume.max()
-
-            rawindex_min = np.argmin(np.abs(self.raw_volumes - min_volume))
-            rawindex_max = np.argmin(np.abs(self.raw_volumes - max_volume))
 
             l1 = raw_ax.plot(
                 elu_volume,
@@ -261,7 +256,7 @@ class WinGPCData(SECDataBase):
             handles = mass_ax.legend_.legend_handles
             handles.append(l1[0])
             handles.append(l2[0])
-            labels = [l.get_label() for l in handles]
+            labels = [hand.get_label() for hand in handles]
             mass_ax.legend(handles, labels)
 
         return raw_ax, mass_ax
@@ -291,7 +286,7 @@ class WinGPCData(SECDataBase):
             # add to the legend of mass_ax
             handles = raw_ax.legend_.legend_handles
             handles.append(l1[0])
-            labels = [l.get_label() for l in handles]
+            labels = [hand.get_label() for hand in handles]
             raw_ax.legend(handles, labels)
 
         return raw_ax
