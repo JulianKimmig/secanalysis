@@ -557,7 +557,7 @@ class SECDataBase(ABC):
             self._basline_corrected = baseline_corrected
         return self._basline_corrected
 
-    def autodetect_signal_boarders(self):
+    def autodetect_signal_boarders(self, order=4):
         """
         Automatically detect the signal boarders.
         """
@@ -568,9 +568,9 @@ class SECDataBase(ABC):
         vol = self.raw_volumes
         # smooth the baseline corrected signal
         med_xdiff = np.nanmedian(np.diff(vol))
-        window = max(1, int(0.5 / med_xdiff))
+        window = max(order + 1, int(0.5 / med_xdiff))
 
-        smoothed = savgol_filter(baseline_corrected, window, 4)
+        smoothed = savgol_filter(baseline_corrected, window, order)
         smoothed = smoothed - np.nanmedian(smoothed)
         smoothed = smoothed / smoothed.max()
 
