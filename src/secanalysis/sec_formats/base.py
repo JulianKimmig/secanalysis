@@ -557,7 +557,7 @@ class SECDataBase(ABC):
             self._basline_corrected = baseline_corrected
         return self._basline_corrected
 
-    def autodetect_signal_boarders(self):
+    def autodetect_signal_boarders(self, order=4):
         """
         Automatically detect the signal boarders.
         """
@@ -568,9 +568,9 @@ class SECDataBase(ABC):
         vol = self.raw_volumes
         # smooth the baseline corrected signal
         med_xdiff = np.nanmedian(np.diff(vol))
-        window = max(1, int(0.5 / med_xdiff))
+        window = max(order + 1, int(0.5 / med_xdiff))
 
-        smoothed = savgol_filter(baseline_corrected, window, 4)
+        smoothed = savgol_filter(baseline_corrected, window, order)
         smoothed = smoothed - np.nanmedian(smoothed)
         smoothed = smoothed / smoothed.max()
 
@@ -623,6 +623,92 @@ class SECDataBase(ABC):
 
         # raise ValueError(merged_edges)
         for left, right, peak in merged_edges:
+            height = smoothed[peak]
+            th_height = height * 0.001
+
+            # get first left th crossing
+            under_th = smoothed[left:peak][::-1] < th_height
+            if np.any(under_th):
+                left_th = peak - np.argmax(under_th)
+                left = max(left, left_th)
+
+            under_th = smoothed[peak:right] < th_height
+            if np.any(under_th):
+                right_th = (np.argmax(under_th)) + peak
+                right = min(right, right_th)
+
             self.add_signal_boarder(
                 index=(left, right, peak),
             )
+
+    def sample(
+        self,
+        *,
+        by: str = "Mw",
+        n: int = 1_000,
+        random_state: Optional[int | np.random.Generator] = None,
+    ) -> np.ndarray:
+        """Return an array of *n* chain masses drawn from the distribution.
+
+        **Weighting options**
+        ---------------------
+        * ``by="Mp"`` – use *dw/dlog M* itself → highest probability at the
+          peak molar mass *Mp*.
+        * ``by="Mn"`` – number‑weighted: probability ∝ *(dw/dlog M)/M*.
+        * ``by="Mw"`` – weight‑weighted: probability ∝ *(dw/dlog M)·M*.
+        Mw draw = “Pick a random repeat unit, then take the chain it belongs to.”
+        Mn draw = “Pick a random chain outright.”
+        Mp draw = “Pick material according to how much the detector sees at each molar mass.”
+        """
+
+        by = by.upper()
+        if by not in {"MP", "MN", "MW"}:
+            raise ValueError("'by' must be one of 'Mp', 'Mn', or 'Mw'.")
+
+        if not self.signal_boarders:
+            self.autodetect_signal_boarders()
+        if not self.signal_boarders:
+            raise ValueError("No signal boarders found. Please set them manually.")
+
+        prob = np.zeros(self.mass_range.size)
+        for i, (b1, b2, p) in enumerate(self.signal_boarders):
+            m1, m2 = self.mass_range[[b2, b1]]
+            # full mass window
+            wlog, mass = self.calc_logMW(m1, m2)
+            if wlog.ndim == 2:
+                wlog = wlog.sum(axis=1)  # combine detectors if needed
+            wlog = wlog.astype(float)
+            wlog = wlog[::-1]
+            mass = mass[::-1]
+
+            # convert according to weighting scheme
+            if by == "MN":
+                prob[b1:b2] += wlog / mass
+            elif by == "MW":
+                prob[b1:b2] += wlog * mass
+            elif by == "MP":
+                prob[b1:b2] += wlog
+            else:
+                raise ValueError(f"Unknown weighting scheme: {by}")
+        prob[prob < 0] = 0.0
+        if not np.any(prob):
+            raise RuntimeError("Probability vector vanished – check data.")
+
+        rng = (
+            np.random.default_rng(random_state)
+            if not isinstance(random_state, np.random.Generator)
+            else random_state
+        )
+        if n <= len(self.mass_range):
+            samplemasses = self.mass_range
+            sampleprob = prob
+        else:
+            pre_x = np.linspace(0, 1, num=len(self.mass_range))
+            ext_x = np.linspace(0, 1, num=n)
+            samplemasses = np.interp(ext_x, pre_x, self.mass_range)
+            sampleprob = np.interp(ext_x, pre_x, prob)
+
+        sampleprob /= sampleprob.sum()
+
+        idx = rng.choice(samplemasses.size, size=n, replace=True, p=sampleprob)
+        return samplemasses[idx]
