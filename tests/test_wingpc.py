@@ -117,9 +117,9 @@ def test_wingpc(
     # np.testing.assert_allclose(wm, mass_f, rtol=5e-3)
 
     # detection
-    gpc.autodetect_signal_boarders()
+    gpc.autodetect_signal_borders()
 
-    # gpc.add_signal_boarder(mass=(8e3, 1e6))
+    # gpc.add_signal_border(mass=(8e3, 1e6))
     fig, _ = gpc.plot(
         # lower_volume_cutoff=10,
         # upper_volume_cutoff=20,

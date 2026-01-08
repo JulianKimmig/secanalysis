@@ -54,7 +54,7 @@ from pathlib import Path
 from secanalysis.sec_formats.win_gpc import WinGPCData
 
 gpc = WinGPCData.from_file(Path("tests/win_gpc_sample.txt"))
-gpc.autodetect_signal_boarders()
+gpc.autodetect_signal_borders()
 
 fig, axes = gpc.plot()
 fig.savefig("sec_overview.png", dpi=300)
@@ -93,14 +93,14 @@ All parsers derive from `SECDataBase` (`src/secanalysis/sec_formats/base.py`) an
 
 - Data access:
   - `raw_volumes` (1D), `raw_signals` (2D), `signal_names` (list)
-  - `basline_corrected_signal` (baseline-corrected signals)
+  - `baseline_corrected_signal` (baseline-corrected signals)
 - Mass calibration and distributions (when calibration exists):
   - `mass_range` (volume → mass)
   - `Wm` and `calc_logMW(lower_mass_cutoff, upper_mass_cutoff)` (dw/dlog10(M))
   - `calc_mass_params(...)` → `{"Mp", "Mn", "Mw", "Mz"}`
 - Border handling:
-  - `autodetect_signal_boarders(order=4)`
-  - `add_signal_boarder(vol=(...), mass=(...), index=(...))`
+  - `autodetect_signal_borders(order=4)`
+  - `add_signal_border(vol=(...), mass=(...), index=(...))`
 - Visualization:
   - `plot(...)` → `(fig, axes)` where `axes` is a dict like `{"raw", "elu", "elu2", "mwd"}`
 - Sampling:
