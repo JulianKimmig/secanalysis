@@ -34,8 +34,15 @@ class SECDataBase(ABC):
         self._mass_range = None
         self._calibration_function = None
         self._calibration_function_params = None
-        self.signal_boarders: List[Tuple[int, int, Optional[int]]] = []
-        self._basline_corrected = None
+        self.signal_borders: List[Tuple[int, int, Optional[int]]] = []
+        self._baseline_corrected = None
+
+    @property
+    def signal_boarders(self) -> pd.DataFrame:
+        """
+        :return: The raw data
+        """
+        return self.signal_borders
 
     @property
     def raw_volumes(self) -> np.ndarray:
@@ -94,17 +101,17 @@ class SECDataBase(ABC):
         current: int,
         lower_cutoff: int,
         upper_cutoff: int,
-        plot_boarders: List[Tuple[int, int, Optional[int]]],
+        plot_borders: List[Tuple[int, int, Optional[int]]],
     ):
         raw_ax = fig.add_subplot(total * 100 + 10 + current)
 
         l1 = raw_ax.plot(
             self.raw_volumes,
-            self.basline_corrected_signal,
+            self.baseline_corrected_signal,
             label=self.signal_names,
         )
 
-        for b1, b2, p in plot_boarders:
+        for b1, b2, p in plot_borders:
             raw_ax.axvspan(
                 self.raw_volumes[b1],
                 self.raw_volumes[b2],
@@ -143,12 +150,12 @@ class SECDataBase(ABC):
         current: int,
         lower_cutoff: int,
         upper_cutoff: int,
-        plot_boarders: List[Tuple[int, int, Optional[int]]],
+        plot_borders: List[Tuple[int, int, Optional[int]]],
     ):
         raw_ax = fig.add_subplot(total * 100 + 10 + current)
 
-        for b1, b2, p in plot_boarders:
-            sig = self.basline_corrected_signal[b1:b2]
+        for b1, b2, p in plot_borders:
+            sig = self.baseline_corrected_signal[b1:b2]
             sig = sig - sig.min()
             sig = sig / sig.max()
             raw_ax.plot(
@@ -186,7 +193,7 @@ class SECDataBase(ABC):
         current: int,
         lower_cutoff: int,
         upper_cutoff: int,
-        plot_boarders: List[Tuple[int, int, Optional[int]]],
+        plot_borders: List[Tuple[int, int, Optional[int]]],
     ):
         raw_ax = fig.add_subplot(total * 100 + 10 + current)
 
@@ -196,7 +203,7 @@ class SECDataBase(ABC):
             label=self.signal_names,
         )
 
-        for b1, b2, p in plot_boarders:
+        for b1, b2, p in plot_borders:
             raw_ax.axvspan(
                 self.raw_volumes[b1],
                 self.raw_volumes[b2],
@@ -217,13 +224,13 @@ class SECDataBase(ABC):
         current: int,
         lower_cutoff: int,
         upper_cutoff: int,
-        plot_boarders: List[Tuple[int, int, Optional[int]]],
+        plot_borders: List[Tuple[int, int, Optional[int]]],
     ):
         raw_ax = fig.add_subplot(total * 100 + 10 + current)
 
         if self.mass_range is not None:
             max_height = -np.inf
-            for i, (b1, b2, p) in enumerate(plot_boarders):
+            for i, (b1, b2, p) in enumerate(plot_borders):
                 m1, m2 = self.mass_range[[b2, b1]]
                 wm_log, mass = self.calc_logMW(m1, m2)
                 max_height = max(max_height, wm_log.max())
@@ -235,7 +242,7 @@ class SECDataBase(ABC):
                     wm_log,
                     label=self.signal_names,
                 )
-                # for i, (b1, b2, p) in enumerate(plot_boarders):
+                # for i, (b1, b2, p) in enumerate(plot_borders):
 
                 m1, m2 = self.mass_range[[b2, b1]]
                 massparams = self.calc_mass_params(m1, m2)
@@ -310,20 +317,20 @@ class SECDataBase(ABC):
         except Exception:
             pass
 
-        boarders = self.signal_boarders.copy()
-        if not boarders:
-            boarders = [(lower_cutoff, upper_cutoff, None)]
+        borders = self.signal_borders.copy()
+        if not borders:
+            borders = [(lower_cutoff, upper_cutoff, None)]
 
-        plot_boarders = []
-        for b1, b2, p in boarders:
+        plot_borders = []
+        for b1, b2, p in borders:
             if p is None:
                 if (b1 >= lower_cutoff) and (b2 <= upper_cutoff):
-                    plot_boarders.append(
+                    plot_borders.append(
                         (b1, b2, np.argmax(self.raw_signals[b1:b2]) + b1)
                     )
             else:
                 if p >= lower_cutoff and p <= upper_cutoff:
-                    plot_boarders.append((b1, b2, p))
+                    plot_borders.append((b1, b2, p))
 
         tot = 4
         fig = plt.figure(
@@ -338,7 +345,7 @@ class SECDataBase(ABC):
                 1,
                 lower_cutoff,
                 upper_cutoff,
-                plot_boarders,
+                plot_borders,
             ),
             "elu": self._plot_elu(
                 fig,
@@ -346,7 +353,7 @@ class SECDataBase(ABC):
                 2,
                 lower_cutoff,
                 upper_cutoff,
-                plot_boarders,
+                plot_borders,
             ),
             "elu2": self._plot_elu2(
                 fig,
@@ -354,7 +361,7 @@ class SECDataBase(ABC):
                 3,
                 lower_cutoff,
                 upper_cutoff,
-                plot_boarders,
+                plot_borders,
             ),
             "mwd": self._plot_mwd(
                 fig,
@@ -362,7 +369,7 @@ class SECDataBase(ABC):
                 4,
                 lower_cutoff,
                 upper_cutoff,
-                plot_boarders,
+                plot_borders,
             ),
         }
 
@@ -447,7 +454,7 @@ class SECDataBase(ABC):
 
         if rev_masses:
             sigma = sigma[::-1]
-        sig_region = self.basline_corrected_signal
+        sig_region = self.baseline_corrected_signal
         if rev_masses:
             sig_region = sig_region[::-1]
 
@@ -485,14 +492,14 @@ class SECDataBase(ABC):
 
         return wm_log, mass[lower_cutoff:upper_cutoff]
 
-    def add_signal_boarder(
+    def add_signal_border(
         self,
         vol: Optional[Tuple[int, int, Optional[int]]] = None,
         mass: Optional[Tuple[int, int, Optional[int]]] = None,
         index: Optional[Tuple[int, int, Optional[int]]] = None,
     ):
         """
-        Add a signal boarder to the plot.
+        Add a signal border to the plot.
 
         """
         # allow only one of the three parameters
@@ -520,11 +527,14 @@ class SECDataBase(ABC):
                 np.argmin(np.abs(self.mass_range - mass[2])) if len(mass) > 2 else None,
             )
 
-        self.signal_boarders.append(index)
+        self.signal_borders.append(index)
+
+    # alias for backwards compatibility TODO: remove in the future
+    add_signal_boarder = add_signal_border
 
     @property
-    def basline_corrected_signal(self):
-        if self._basline_corrected is None:
+    def baseline_corrected_signal(self):
+        if self._baseline_corrected is None:
             _min = self.raw_signals.min(0)
             _fac = self.raw_signals.max(0) - _min
             normalized_signals = (self.raw_signals - _min) / _fac
@@ -554,15 +564,20 @@ class SECDataBase(ABC):
             baseline_corrected = (
                 self.raw_signals - (baseline[:, np.newaxis] * _fac) + _min
             )
-            self._basline_corrected = baseline_corrected
-        return self._basline_corrected
+            self._baseline_corrected = baseline_corrected
+        return self._baseline_corrected
 
-    def autodetect_signal_boarders(self, order=4):
+    # alias for backwards compatibility TODO: remove in the future
+    @property
+    def basline_corrected_signal(self):
+        return self.baseline_corrected_signal
+
+    def autodetect_signal_borders(self, order=4):
         """
-        Automatically detect the signal boarders.
+        Automatically detect the signal borders.
         """
 
-        baseline_corrected = self.basline_corrected_signal.sum(1)
+        baseline_corrected = self.baseline_corrected_signal.sum(1)
         baseline_corrected = baseline_corrected - baseline_corrected.min()
         baseline_corrected = baseline_corrected / baseline_corrected.max()
         vol = self.raw_volumes
@@ -637,9 +652,12 @@ class SECDataBase(ABC):
                 right_th = (np.argmax(under_th)) + peak
                 right = min(right, right_th)
 
-            self.add_signal_boarder(
+            self.add_signal_border(
                 index=(left, right, peak),
             )
+
+    # alias for backwards compatibility TODO: remove in the future
+    autodetect_signal_boarders = autodetect_signal_borders
 
     def sample(
         self,
@@ -665,13 +683,13 @@ class SECDataBase(ABC):
         if by not in {"MP", "MN", "MW"}:
             raise ValueError("'by' must be one of 'Mp', 'Mn', or 'Mw'.")
 
-        if not self.signal_boarders:
-            self.autodetect_signal_boarders()
-        if not self.signal_boarders:
-            raise ValueError("No signal boarders found. Please set them manually.")
+        if not self.signal_borders:
+            self.autodetect_signal_borders()
+        if not self.signal_borders:
+            raise ValueError("No signal borders found. Please set them manually.")
 
         prob = np.zeros(self.mass_range.size)
-        for i, (b1, b2, p) in enumerate(self.signal_boarders):
+        for i, (b1, b2, p) in enumerate(self.signal_borders):
             m1, m2 = self.mass_range[[b2, b1]]
             # full mass window
             wlog, mass = self.calc_logMW(m1, m2)
